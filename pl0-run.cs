@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Linq;
+using System.Diagnostics;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
 
@@ -35,8 +36,11 @@ namespace NotFounds
         private Stack<int> stack;
         private Dictionary<int, int> mem;
 
-        public pl0()
+        private int TimeOut;
+
+        public pl0(int timeout = 5000)
         {
+            TimeOut = timeout;
             Init();
         }
 
@@ -54,13 +58,16 @@ namespace NotFounds
 
         public void Run(string filePath)
         {
-            if (!File.Exists(filePath)) Console.WriteLine("File Not Exits Exception.");
+            if (!File.Exists(filePath)) WriteErrorAndExit("File Not Exits Exception");
             string[] instructions = File.ReadAllLines(filePath);
-            Console.WriteLine(" --- Program Start! --- ");
-            while (true)
-            {
-                string[] args = instructions[PC].Split(' ', ',');
+            var sw = new Stopwatch();
 
+            Console.WriteLine(" --- Program Start! --- ");
+            sw.Start();
+            while (0 <= PC && instructions.Length > PC)
+            {
+                if (sw.ElapsedMilliseconds > TimeOut) WriteErrorAndExit($"Time Out : {TimeOut} ms");
+                string[] args = instructions[PC].Replace('\t', ' ').Replace("  ", " ").Trim(' ').Split(' ', ',');
                 switch (args[0].ToUpper())
                 {
                     case "LOAD":
@@ -121,10 +128,15 @@ namespace NotFounds
                         PRINTLN();
                         break;
                     case "END":
+                        sw.Stop();
                         Console.WriteLine(" --- Program End! --- ");
+                        Console.WriteLine($" Time : {sw.ElapsedMilliseconds} ms");
                         return;
                     case "DEBUG":
                         DEBUG();
+                        break;
+                    default:
+                        WriteErrorAndExit("Syntax Error");
                         break;
                 }
                 PC++;
@@ -137,7 +149,10 @@ namespace NotFounds
             if (!int.TryParse(adr, out val))
             {
                 string address = string.Concat(adr.Where(d => (Char.IsDigit(d))).ToArray());
-                val = mem[int.Parse(address)];
+                if (!mem.TryGetValue(int.Parse(address), out val))
+                {
+                    WriteErrorAndExit("Null Pointer Exception : Wrong Adress");
+                }
             }
 
             switch (reg.ToUpper())
@@ -150,6 +165,9 @@ namespace NotFounds
                     break;
                 case "C":
                     regC = val;
+                    break;
+                default:
+                    WriteErrorAndExit($"Syntax Error : Not Exists \"{reg}\"");
                     break;
             }
         }
@@ -171,6 +189,9 @@ namespace NotFounds
                     case "C":
                         address = regC;
                         break;
+                    default:
+                        WriteErrorAndExit($"Systax Error : Not Exists \"{tmp}\"");
+                        break;
                 }
             }
             switch (reg.ToUpper())
@@ -183,6 +204,9 @@ namespace NotFounds
                     break;
                 case "C":
                     mem[address] = regC;
+                    break;
+                default:
+                    WriteErrorAndExit($"Systax Error : Not Exists \"{reg}\"");
                     break;
             }
         }
@@ -200,6 +224,9 @@ namespace NotFounds
                 case "C":
                     stack.Push(regC);
                     break;
+                default:
+                    WriteErrorAndExit($"Systax Error : Not Exists \"{reg}\"");
+                    break;
             }
         }
 
@@ -215,6 +242,9 @@ namespace NotFounds
                     break;
                 case "C":
                     regC = stack.Pop();
+                    break;
+                default:
+                    WriteErrorAndExit($"Systax Error : Not Exists \"{reg}\"");
                     break;
             }
         }
@@ -236,6 +266,7 @@ namespace NotFounds
 
         private void DIV()
         {
+            if (regB == 0) WriteErrorAndExit($"Zero Division Exception");
             regC = regA / regB;
         }
 
@@ -304,6 +335,9 @@ namespace NotFounds
                 case "C":
                     Console.Write(regC);
                     break;
+                default:
+                    WriteErrorAndExit($"Systax Error : Not Exists \"{reg}\"");
+                    break;
             }
         }
 
@@ -319,6 +353,12 @@ namespace NotFounds
             {
                 Console.Error.WriteLine($"Adress:{pair.Key} Value:{pair.Value}");
             }
+        }
+
+        private void WriteErrorAndExit(string message)
+        {
+            Console.Error.WriteLine($"{message}.(PC:{PC})");
+            Environment.Exit(1);
         }
     }
 }
