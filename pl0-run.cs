@@ -123,6 +123,9 @@ namespace NotFounds
                     case "END":
                         Console.WriteLine(" --- Program End! --- ");
                         return;
+                    case "DEBUG":
+                        DEBUG();
+                        break;
                 }
                 PC++;
             }
@@ -307,6 +310,15 @@ namespace NotFounds
         private void PRINTLN()
         {
             Console.WriteLine("");
+        }
+
+        private void DEBUG()
+        {
+            Console.Error.WriteLine($"StackLen:[{stack.Count}] regA:{regA} regB:{regB} regC:{regC} PC:{PC}");
+            foreach (var pair in mem)
+            {
+                Console.Error.WriteLine($"Adress:{pair.Key} Value:{pair.Value}");
+            }
         }
     }
 }
