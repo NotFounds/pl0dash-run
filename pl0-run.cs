@@ -277,8 +277,8 @@ namespace NotFounds
 
         private void CMPGE()
         {
-             if (regA >= regB) regC = 1;
-             else regC = 0;
+            if (regA >= regB) regC = 1;
+            else regC = 0;
         }
 
         private void JMP(string address)
