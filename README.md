@@ -20,6 +20,37 @@
 ## run
 `mono pl0-run.exe [pl0dash assembly file path]`
 
+# Example
+
+This is simple pl0dash code.
+```c:pl0dash.pl0
+begin
+  write 1;
+  writeln;
+end.
+```
+Compile with [simozono/pl0dash(pl0-last-compiler)](https://github.com/simozono/pl0dash)
+
+And get this assembly code.
+```text:Example/pl0-1.asm
+LOAD A,1
+PUSH A
+POP A
+PRINT A
+PRINTLN
+END
+```
+
+Run.  
+`mono pl0-run.exe Example/pl0-1.asm`
+
+Result.
+```test:result
+ --- Program Start! ---
+1
+ --- Program End! ---
+```
+
 # Virtual CPU
 + CPU has 3 registers, `A` and `B`, `C`.
 
