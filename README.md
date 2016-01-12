@@ -49,6 +49,7 @@ Result.
  --- Program Start! ---
 1
  --- Program End! ---
+ Time : 5 ms
 ```
 
 # Virtual CPU
