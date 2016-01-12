@@ -285,7 +285,7 @@ namespace NotFounds
 
         private void JPC(string address)
         {
-            if (regC == 1) PC = int.Parse(address) - 2;
+            if (regC == 0) PC = int.Parse(address) - 2;
         }
 
         private void PRINT(string reg)
@@ -293,13 +293,13 @@ namespace NotFounds
             switch (reg.ToUpper())
             {
                 case "A":
-                    Console.WriteLine(regA);
+                    Console.Write(regA);
                     break;
                 case "B":
-                    Console.WriteLine(regB);
+                    Console.Write(regB);
                     break;
                 case "C":
-                    Console.WriteLine(regC);
+                    Console.Write(regC);
                     break;
             }
         }
