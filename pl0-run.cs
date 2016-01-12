@@ -11,17 +11,50 @@ namespace NotFounds
     {
         private static void Main(string[] Argv)
         {
-            if (Argv.Length == 0) ShowHelp();
-            if (Argv.Length == 1)
+            switch (Argv.Length)
             {
-                var pl0 = new pl0();
-                pl0.Run(Argv[0]);
+                case 1:
+                    if (Argv[0].StartsWith("-"))
+                    {
+                        if (Argv[0] == "-v") ShowVersion();
+                        else if (Argv[0] == "-h") ShowHelp();
+                        else { ShowHelp(); Environment.Exit(1); }
+                    }
+                    else
+                    {
+                        var pl0 = new pl0();
+                        pl0.Run(Argv[0]);
+                    }
+                    break;
+                case 3:
+                    int time;
+                    if (Argv[0] == "-t" && int.TryParse(Argv[1], out time) && time > 0)
+                    {
+                        var pl0 = new pl0(time);
+                        pl0.Run(Argv[0]);
+                    }
+                    else { ShowHelp(); Environment.Exit(1); }
+                    break;
+                default:
+                    ShowHelp();
+                    Environment.Exit(1);
+                    break;
             }
         }
 
         private static void ShowHelp()
         {
-            Console.WriteLine("mono pl0-run filename");
+            Console.WriteLine("[Usage]");
+            Console.WriteLine("mono pl0-run [options] filename");
+            Console.WriteLine("[Options]");
+            Console.WriteLine("-h\t\tShow Help.");
+            Console.WriteLine("-v\t\tShow Version.");
+            Console.WriteLine("-t time\t\tSet TimeOut time is millisecond.");
+        }
+
+        private static void ShowVersion()
+        {
+            Console.WriteLine(FileVersionInfo.GetVersionInfo(System.Reflection.Assembly.GetExecutingAssembly().Location));
         }
     }
 
