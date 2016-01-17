@@ -80,6 +80,9 @@ Result.
 |END         |END                                   |end|
 |DEBUG       |DEBUG                                 |output stack-length and memory, registers, pc to error stream|
 
+# Debugging Option
+Debugging information is output when you describe at the beginning of a line `@`.
+
 # License
 Copyright (c) 2015 Iori Ikeda  
 This software is released under the MIT License, see [License](https://github.com/NotFounds/pl0dash-run/blob/master/LICENSE)。

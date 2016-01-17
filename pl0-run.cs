@@ -119,6 +119,7 @@ namespace NotFounds
             {
                 if (isCount && sw.ElapsedMilliseconds > TimeOut) WriteErrorAndExit($"Time Out : {TimeOut} ms");
                 string[] args = instructions[PC - 1].Replace('\t', ' ').Replace("  ", " ").Trim(' ').Split(' ', ',');
+                if (args[0].StartsWith("@")) { DEBUG(); args[0] = args[0].Substring(1); }
                 switch (args[0].ToUpper())
                 {
                     case "LOAD":
