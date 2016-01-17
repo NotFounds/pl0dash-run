@@ -57,7 +57,7 @@ namespace NotFounds
             Console.WriteLine("[Options]");
             Console.WriteLine("-h\t\tShow Help.");
             Console.WriteLine("-v\t\tShow Version.");
-            Console.WriteLine("-t time\t\tSet TimeOut time is millisecond.");
+            Console.WriteLine("-t time\t\tSet TimeOut time with millisecond.");
         }
 
         private static void ShowVersion()
@@ -76,7 +76,6 @@ namespace NotFounds
         private int FP;
         private int SP;
 
-        private Stack<int> stack;
         private const int MaxSize = 1000;
         private const int offset  = 800;
         private const int MemSize = MaxSize - offset;
@@ -97,10 +96,9 @@ namespace NotFounds
             regC = 0;
 
             PC = 1;
-            FP = 0;
-            SP = 0;
+            FP = MaxSize;
+            SP = MaxSize;
 
-            stack  = new Stack<int>();
             memory = new int[MemSize];
         }
 
@@ -173,6 +171,15 @@ namespace NotFounds
                     case "JPC":
                         JPC(args[1]);
                         break;
+                    case "CALL":
+                        CALL(args[1]);
+                        break;
+                    case "RET":
+                        RET(args[1]);
+                        break;
+                    case "PUSHUP":
+                        PUSHUP();
+                        break;
                     case "PRINT":
                         PRINT(args[1]);
                         break;
@@ -198,16 +205,75 @@ namespace NotFounds
             }
         }
 
+        private int AnalyzeParam(string param)
+        {
+            int ret;
+            param = param.Replace(" ", "").Replace("#(", "").Replace(")", "");
+            if (int.TryParse(param, out ret)) return ret;
+            if (GetRegFromString(param, out ret)) return ret;
+
+            string[]    tokens   = param.Split('+', '-');
+            Stack<char> operands = new Stack<char>();
+            param.Where(c => (c == '+' || c == '-')).ToList().ForEach(c => operands.Push(c));
+
+            if (tokens.Length != operands.Count + 1)
+                WriteErrorAndExit($"Syntax Error");
+
+            ret = AnalyzeParam(tokens[0]);
+            for (int i = 1; 0 < operands.Count; i++)
+            {
+                char ope = operands.Pop();
+                switch (ope)
+                {
+                    case '+':
+                        ret += AnalyzeParam(tokens[i]);
+                        break;
+                    case '-':
+                        ret -= AnalyzeParam(tokens[i]);
+                        break;
+                }
+            }
+            return ret;
+        }
+
+        private bool GetRegFromString(string reg, out int value)
+        {
+            switch (reg.ToUpper())
+            {
+                case "A":
+                    value = regA;
+                    return true;
+                case "B":
+                    value = regB;
+                    return true;
+                case "C":
+                    value = regC;
+                    return true;
+                case "FP":
+                    value = FP;
+                    return true;
+                case "SP":
+                    value = SP;
+                    return true;
+                default:
+                    value = -1;
+                    return false;
+            }
+        }
+
         private void LOAD(string reg, string adr)
         {
             int val;
-            if (!int.TryParse(adr, out val))
+            if (int.TryParse(adr, out val)) {}
+            else if (GetRegFromString(adr, out val)) {}
+            else
             {
-                int address;
-                string tmp = string.Concat(adr.Where(d => (Char.IsDigit(d))).ToArray());
-                if (!int.TryParse(tmp, out address) || address < offset || address > MaxSize)
-                    WriteErrorAndExit($"Null Pointer Exception : Wrong Adress {address}");
-                else address -= offset;
+                int address = AnalyzeParam(adr);
+                if (offset <= address && address <= MaxSize)
+                {
+                    address -= offset;
+                }
+                else WriteErrorAndExit($"Null Pointer Exception : Wrong Address {address}");
                 val = memory[address];
             }
 
@@ -222,6 +288,12 @@ namespace NotFounds
                 case "C":
                     regC = val;
                     break;
+                case "FP":
+                    FP = val;
+                    break;
+                case "SP":
+                    SP = val;
+                    break;
                 default:
                     WriteErrorAndExit($"Syntax Error : Not Exists \"{reg}\"");
                     break;
@@ -230,78 +302,61 @@ namespace NotFounds
 
         private void STORE(string reg, string adr)
         {
-            string tmp = string.Concat(adr.Where(d => (Char.IsDigit(d) || "ABC".IndexOf(Char.ToUpper(d)) != -1)).ToArray());
-            int address;
-            if (!int.TryParse(tmp, out address))
-            {
-                switch (tmp)
-                {
-                    case "A":
-                        address = regA;
-                        break;
-                    case "B":
-                        address = regB;
-                        break;
-                    case "C":
-                        address = regC;
-                        break;
-                    default:
-                        WriteErrorAndExit($"Systax Error : Not Exists \"{tmp}\"");
-                        break;
-                }
-            }
+            int address = AnalyzeParam(adr);
 
-            if (offset <= address && address < MaxSize) address -= offset;
+            if (offset <= address && address < MaxSize)
+            {
+                address -= offset;
+            }
             else WriteErrorAndExit($"Null Pointer Exception : Wrong Address {address}");
 
-            switch (reg.ToUpper())
-            {
-                case "A":
-                    memory[address] = regA;
-                    break;
-                case "B":
-                    memory[address] = regB;
-                    break;
-                case "C":
-                    memory[address] = regC;
-                    break;
-                default:
-                    WriteErrorAndExit($"Systax Error : Not Exists \"{reg}\"");
-                    break;
-            }
+            memory[address] = AnalyzeParam(reg);
         }
 
         private void PUSH(string reg)
         {
-            switch (reg.ToUpper())
+            Action<int> Push = (int value) =>
             {
-                case "A":
-                    stack.Push(regA);
-                    break;
-                case "B":
-                    stack.Push(regB);
-                    break;
-                case "C":
-                    stack.Push(regC);
-                    break;
-                default:
-                    WriteErrorAndExit($"Systax Error : Not Exists \"{reg}\"");
-                    break;
-            }
+                if (offset < SP)
+                {
+                    memory[--SP - offset] = value;
+                }
+                else WriteErrorAndExit($"Out Of Memory Exception");
+            };
+
+            int val;
+            if (!GetRegFromString(reg, out val)) WriteErrorAndExit($"Syntax Error : Not Exists {reg}");
+
+            Push(val);
         }
 
         private void POP(string reg)
         {
+            Func<int> Pop = () =>
+            {
+                if (SP < MaxSize)
+                {
+                    return memory[SP++ - offset];
+                }
+                else WriteErrorAndExit($"Stack Empry Exception");
+                return 0;
+            };
             switch (reg.ToUpper())
             {
                 case "A":
-                    regA = stack.Pop();
+                    regA = Pop();
                     break;
                 case "B":
-                    regB = stack.Pop();
+                    regB = Pop();
                     break;
                 case "C":
-                    regC = stack.Pop();
+                    regC = Pop();
+                    break;
+                case "FP":
+                    FP = Pop();
+                    break;
+                case "SP":
+                    SP = Pop();
                     break;
                 default:
                     WriteErrorAndExit($"Systax Error : Not Exists \"{reg}\"");
@@ -374,31 +429,51 @@ namespace NotFounds
 
         private void JMP(string address)
         {
-            PC = int.Parse(address) - 1;
+            PC = AnalyzeParam(address) - 1;
         }
 
         private void JPC(string address)
         {
-            if (regC == 0) PC = int.Parse(address) - 1;
+            if (regC == 0) JMP(address);
+        }
+
+        private void CALL(string address)
+        {
+            Action<int> Push = (int value) =>
+            {
+                if (offset < SP)
+                {
+                    memory[--SP - offset] = value;
+                }
+                else WriteErrorAndExit($"Out Of Memory Exception");
+            };
+            Push(PC + 1);
+            JMP(address);
+        }
+
+        private void RET(string address)
+        {
+            Func<int> Pop = () =>
+            {
+                if (SP < MaxSize)
+                {
+                    return memory[SP++ - offset];
+                }
+                else WriteErrorAndExit($"Out Of Memory Exception");
+                return 0;
+            };
+            PC = Pop() - 1;
+            SP += AnalyzeParam(address);
+        }
+
+        private void PUSHUP()
+        {
+            SP--;
         }
 
         private void PRINT(string reg)
         {
-            switch (reg.ToUpper())
-            {
-                case "A":
-                    Console.Write(regA);
-                    break;
-                case "B":
-                    Console.Write(regB);
-                    break;
-                case "C":
-                    Console.Write(regC);
-                    break;
-                default:
-                    WriteErrorAndExit($"Systax Error : Not Exists \"{reg}\"");
-                    break;
-            }
+            Console.Write(AnalyzeParam(reg));
         }
 
         private void PRINTLN()
@@ -408,16 +483,17 @@ namespace NotFounds
 
         private void DEBUG()
         {
-            Console.Error.WriteLine($"StackLen:[{stack.Count}] regA:{regA} regB:{regB} regC:{regC} PC:{PC}");
-            for (int i = offset; i < SP; i++)
-            {
-                Console.Error.WriteLine($"Adress:{i} Value:{memory[i]}");
-            }
+            Console.Error.Write($"regA:{regA} regB:{regB} regC:{regC} PC:{PC} FP:{FP} SP:{SP}");
+            Console.Error.Write(" Stack:{");
+            for (int i = SP; i < MaxSize; i++)
+                Console.Error.Write($"{memory[i - offset]} ");
+            Console.Error.WriteLine("}");
         }
 
         private void WriteErrorAndExit(string message)
         {
             Console.Error.WriteLine($"{message}.(PC:{PC})");
+            DEBUG();
             Environment.Exit(1);
         }
     }
