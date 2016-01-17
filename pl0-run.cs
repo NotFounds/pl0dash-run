@@ -26,12 +26,20 @@ namespace NotFounds
                         pl0.Run(Argv[0]);
                     }
                     break;
+                case 2:
+                    if (Argv[0] == "-t")
+                    {
+                        var pl0 = new pl0();
+                        pl0.Run(Argv[1], true);
+                    }
+                    else { ShowHelp(); Environment.Exit(1); }
+                    break;
                 case 3:
                     int time;
                     if (Argv[0] == "-t" && int.TryParse(Argv[1], out time) && time > 0)
                     {
                         var pl0 = new pl0(time);
-                        pl0.Run(Argv[2]);
+                        pl0.Run(Argv[2], true);
                     }
                     else { ShowHelp(); Environment.Exit(1); }
                     break;
@@ -65,9 +73,14 @@ namespace NotFounds
         private int regC;
 
         private int PC;
+        private int FP;
+        private int SP;
 
         private Stack<int> stack;
-        private Dictionary<int, int> mem;
+        private const int MaxSize = 1000;
+        private const int offset  = 800;
+        private const int MemSize = MaxSize - offset;
+        private int[] memory = new int[MemSize];
 
         private int TimeOut;
 
@@ -83,24 +96,29 @@ namespace NotFounds
             regB = 0;
             regC = 0;
 
-            PC = 0;
+            PC = 1;
+            FP = 0;
+            SP = 0;
 
-            stack = new Stack<int>();
-            mem   = new Dictionary<int, int>();
+            stack  = new Stack<int>();
+            memory = new int[MemSize];
         }
 
-        public void Run(string filePath)
+        public void Run(string filePath, bool isCount = false)
         {
             if (!File.Exists(filePath)) WriteErrorAndExit("File Not Exits Exception");
             string[] instructions = File.ReadAllLines(filePath);
             var sw = new Stopwatch();
 
-            Console.WriteLine(" --- Program Start! --- ");
-            sw.Start();
-            while (0 <= PC && instructions.Length > PC)
+            if (isCount)
             {
-                if (sw.ElapsedMilliseconds > TimeOut) WriteErrorAndExit($"Time Out : {TimeOut} ms");
-                string[] args = instructions[PC].Replace('\t', ' ').Replace("  ", " ").Trim(' ').Split(' ', ',');
+                Console.WriteLine(" --- Program Start! --- ");
+                sw.Start();
+            }
+            while (1 <= PC && instructions.Length >= PC)
+            {
+                if (isCount && sw.ElapsedMilliseconds > TimeOut) WriteErrorAndExit($"Time Out : {TimeOut} ms");
+                string[] args = instructions[PC - 1].Replace('\t', ' ').Replace("  ", " ").Trim(' ').Split(' ', ',');
                 switch (args[0].ToUpper())
                 {
                     case "LOAD":
@@ -161,9 +179,12 @@ namespace NotFounds
                         PRINTLN();
                         break;
                     case "END":
-                        sw.Stop();
-                        Console.WriteLine(" --- Program End! --- ");
-                        Console.WriteLine($" Time : {sw.ElapsedMilliseconds} ms");
+                        if (isCount)
+                        {
+                            sw.Stop();
+                            Console.WriteLine(" --- Program End! --- ");
+                            Console.WriteLine($" Time : {sw.ElapsedMilliseconds} ms");
+                        }
                         return;
                     case "DEBUG":
                         DEBUG();
@@ -181,11 +202,12 @@ namespace NotFounds
             int val;
             if (!int.TryParse(adr, out val))
             {
-                string address = string.Concat(adr.Where(d => (Char.IsDigit(d))).ToArray());
-                if (!mem.TryGetValue(int.Parse(address), out val))
-                {
-                    WriteErrorAndExit("Null Pointer Exception : Wrong Adress");
-                }
+                int address;
+                string tmp = string.Concat(adr.Where(d => (Char.IsDigit(d))).ToArray());
+                if (!int.TryParse(tmp, out address) || address < offset || address > MaxSize)
+                    WriteErrorAndExit($"Null Pointer Exception : Wrong Adress {address}");
+                else address -= offset;
+                val = memory[address];
             }
 
             switch (reg.ToUpper())
@@ -227,16 +249,20 @@ namespace NotFounds
                         break;
                 }
             }
+
+            if (offset <= address && address < MaxSize) address -= offset;
+            else WriteErrorAndExit($"Null Pointer Exception : Wrong Address {address}");
+
             switch (reg.ToUpper())
             {
                 case "A":
-                    mem[address] = regA;
+                    memory[address] = regA;
                     break;
                 case "B":
-                    mem[address] = regB;
+                    memory[address] = regB;
                     break;
                 case "C":
-                    mem[address] = regC;
+                    memory[address] = regC;
                     break;
                 default:
                     WriteErrorAndExit($"Systax Error : Not Exists \"{reg}\"");
@@ -347,12 +373,12 @@ namespace NotFounds
 
         private void JMP(string address)
         {
-            PC = int.Parse(address) - 2;
+            PC = int.Parse(address) - 1;
         }
 
         private void JPC(string address)
         {
-            if (regC == 0) PC = int.Parse(address) - 2;
+            if (regC == 0) PC = int.Parse(address) - 1;
         }
 
         private void PRINT(string reg)
@@ -382,9 +408,9 @@ namespace NotFounds
         private void DEBUG()
         {
             Console.Error.WriteLine($"StackLen:[{stack.Count}] regA:{regA} regB:{regB} regC:{regC} PC:{PC}");
-            foreach (var pair in mem)
+            for (int i = offset; i < SP; i++)
             {
-                Console.Error.WriteLine($"Adress:{pair.Key} Value:{pair.Value}");
+                Console.Error.WriteLine($"Adress:{i} Value:{memory[i]}");
             }
         }
 
