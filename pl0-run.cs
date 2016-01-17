@@ -31,7 +31,7 @@ namespace NotFounds
                     if (Argv[0] == "-t" && int.TryParse(Argv[1], out time) && time > 0)
                     {
                         var pl0 = new pl0(time);
-                        pl0.Run(Argv[0]);
+                        pl0.Run(Argv[2]);
                     }
                     else { ShowHelp(); Environment.Exit(1); }
                     break;
